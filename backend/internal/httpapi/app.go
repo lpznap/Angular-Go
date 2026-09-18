@@ -9,6 +9,7 @@ import (
 	"dailyworknotes/internal/service"
 	"dailyworknotes/internal/storage"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 )
@@ -67,7 +69,9 @@ func (a *API) App() *fiber.App {
 		c.SetContext(ctx)
 		start := time.Now()
 		e := c.Next()
-		if e != nil { e = app.Config().ErrorHandler(c, e) }
+		if e != nil {
+			e = app.Config().ErrorHandler(c, e)
+		}
 		slog.Info("http", "method", c.Method(), "status", c.Response().StatusCode(), "durationMs", time.Since(start).Milliseconds(), "requestId", requestid.FromContext(c))
 		return e
 	})
@@ -78,7 +82,11 @@ func (a *API) App() *fiber.App {
 		}
 		return c.JSON(fiber.Map{"status": "ready"})
 	})
-	app.Get("/openapi.yaml", func(c fiber.Ctx) error { return c.SendFile("./docs/openapi.yaml") })
+	app.Get("/openapi.yaml", func(c fiber.Ctx) error {
+		path := "./docs/openapi.yaml"
+		if _, err := os.Stat(path); err != nil { path = "../docs/openapi.yaml" }
+		return c.SendFile(path)
+	})
 	app.Get("/docs", func(c fiber.Ctx) error {
 		c.Type("html")
 		return c.SendString(`<!doctype html><html><head><title>Daily Work Notes API</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.29.0/swagger-ui.css"></head><body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5.29.0/swagger-ui-bundle.js"></script><script>SwaggerUIBundle({url:'/openapi.yaml',dom_id:'#swagger-ui'})</script></body></html>`)
@@ -139,22 +147,31 @@ func (a *API) session(c fiber.Ctx) error {
 	c.Locals("csrf", csrf)
 	return c.Next()
 }
+
+// Input ignores server-managed timestamps rather than parsing client values.
+type noteInput struct {
+	domain.Note
+	CreatedAt json.RawMessage `json:"createdAt"`
+	UpdatedAt json.RawMessage `json:"updatedAt"`
+}
+
 func (a *API) create(c fiber.Ctx) error {
-	var n domain.Note
-	if e := c.Bind().JSON(&n); e != nil {
+	var input noteInput
+	if e := c.Bind().JSON(&input); e != nil {
 		return fiber.NewError(400, "Invalid JSON")
 	}
-	v, e := a.Notes.Save(c.Context(), user(c), n, true)
+	v, e := a.Notes.Save(c.Context(), user(c), input.Note, true)
 	if e != nil {
 		return e
 	}
 	return c.Status(201).JSON(v)
 }
 func (a *API) update(c fiber.Ctx) error {
-	var n domain.Note
-	if e := c.Bind().JSON(&n); e != nil {
+	var input noteInput
+	if e := c.Bind().JSON(&input); e != nil {
 		return fiber.NewError(400, "Invalid JSON")
 	}
+	n := input.Note
 	n.ID = c.Params("id")
 	v, e := a.Notes.Save(c.Context(), user(c), n, false)
 	if e != nil {
@@ -212,6 +229,8 @@ func (a *API) list(c fiber.Ctx) error {
 		return e
 	}
 	hasMore := len(rows) > size
-	if hasMore { rows = rows[:size] }
+	if hasMore {
+		rows = rows[:size]
+	}
 	return c.JSON(fiber.Map{"items": rows, "page": page, "size": size, "hasMore": hasMore})
 }

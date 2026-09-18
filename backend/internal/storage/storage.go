@@ -24,7 +24,23 @@ func (s Store) Path(key string) string {
 	}
 	return filepath.Join(s.Root, key)
 }
-func (s Store) Put(key string, b []byte) error  { return os.WriteFile(s.Path(key), b, 0600) }
+func (s Store) Put(key string, b []byte) error {
+	f, e := os.OpenFile(s.Path(key), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if e != nil {
+		return e
+	}
+	if _, e = f.Write(b); e == nil {
+		e = f.Sync()
+	}
+	closeErr := f.Close()
+	if e == nil {
+		e = closeErr
+	}
+	if e != nil {
+		_ = s.Remove(key)
+	}
+	return e
+}
 func (s Store) Read(key string) ([]byte, error) { return os.ReadFile(s.Path(key)) }
 func (s Store) Remove(key string) error {
 	e := os.Remove(s.Path(key))

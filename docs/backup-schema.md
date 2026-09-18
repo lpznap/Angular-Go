@@ -29,7 +29,8 @@ new IDs and can never overwrite another user's note.
 Imports run in one database transaction. A failed batch rolls back all database
 changes; successfully staged new files are removed on a failed attempt. Old files
 are queued for deletion in the same database transaction as metadata changes.
-The background cleanup worker retries deletion failures. New storage IDs are used
+The background cleanup worker retries deletion failures. Crash orphans and files
+from uncertain commits are reconciled after a one-hour grace period. New storage IDs are used
 for restored attachments. Imported version numbers are never trusted.
 
 See `sample-backup.json` for English and Thai sample data. There are no seeded

@@ -1,14 +1,8 @@
-import { Component, computed, inject, signal } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { MatButtonModule } from "@angular/material/button";
-import { Api } from "../../core/api";
-import {
-  Note,
-  Page,
-  dateInZone,
-  minutesLabel,
-  weekRange,
-} from "../../core/models";
+import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { Api } from '../../core/api';
+import { Note, Page, dateInZone, minutesLabel, weekRange } from '../../core/models';
 @Component({
   imports: [RouterLink, MatButtonModule],
   template: `<section class="page-heading">
@@ -17,10 +11,7 @@ import {
         <h1>A little more clarity.</h1>
         <p class="muted">Here’s how your day is coming together.</p>
       </div>
-      <a
-        mat-stroked-button
-        routerLink="/reports"
-        [queryParams]="{ from: today, to: today }"
+      <a mat-stroked-button routerLink="/reports" [queryParams]="{ from: today, to: today }"
         >↗ Export today</a
       >
     </section>
@@ -57,9 +48,7 @@ import {
           <h2>
             Today’s notes <span class="count">{{ todayNotes().length }}</span>
           </h2>
-          <a routerLink="/notes" [queryParams]="{ from: today, to: today }"
-            >View all →</a
-          >
+          <a routerLink="/notes" [queryParams]="{ from: today, to: today }">View all →</a>
         </div>
         @if (loading()) {
           <p class="empty">Loading your workspace…</p>
@@ -71,17 +60,11 @@ import {
             <a class="note-row" [routerLink]="['/notes', n.id]"
               ><span class="note-glyph">▤</span>
               <div>
-                <span class="project-label">{{
-                  n.project || "PERSONAL WORK"
-                }}</span>
+                <span class="project-label">{{ n.project || 'PERSONAL WORK' }}</span>
                 <h3>{{ n.title }}</h3>
-                <span class="muted small"
-                  >{{ n.tasks.length }} tasks · {{ time(n.minutes) }}</span
-                >
+                <span class="muted small">{{ n.tasks.length }} tasks · {{ time(n.minutes) }}</span>
               </div>
-              <span class="badge" [attr.data-status]="n.status">{{
-                labels[n.status]
-              }}</span
+              <span class="badge" [attr.data-status]="n.status">{{ labels[n.status] }}</span
               ><span class="row-arrow">↗</span></a
             >
           } @empty {
@@ -102,10 +85,7 @@ import {
           @for (d of days(); track d.date) {
             <div>
               <span class="bar-track"
-                ><span
-                  [style.height.%]="d.height"
-                  [class.current]="d.date === today"
-                ></span></span
+                ><span [style.height.%]="d.height" [class.current]="d.date === today"></span></span
               ><small>{{ d.label }}</small>
             </div>
           }
@@ -114,9 +94,7 @@ import {
           <strong>{{ time(weekMinutes()) }}</strong
           ><span>captured this week</span>
         </div>
-        <a routerLink="/email" [queryParams]="range"
-          >Share your weekly summary →</a
-        >
+        <a routerLink="/email" [queryParams]="range">Share your weekly summary →</a>
       </section>
     </div>
     <div class="quiet-banner">
@@ -132,28 +110,24 @@ export class Dashboard {
   api = inject(Api);
   today = dateInZone(this.api.user()!.timezone);
   range = weekRange(this.today);
-  dateLabel = new Intl.DateTimeFormat("en", {
+  dateLabel = new Intl.DateTimeFormat('en', {
     timeZone: this.api.user()!.timezone,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
   }).format(new Date());
   notes = signal<Note[]>([]);
   loading = signal(true);
-  error = signal("");
+  error = signal('');
   time = minutesLabel;
   labels = {
-    todo: "To do",
-    progress: "In progress",
-    completed: "Completed",
-    blocked: "Blocked",
+    todo: 'To do',
+    progress: 'In progress',
+    completed: 'Completed',
+    blocked: 'Blocked',
   };
-  todayNotes = computed(() =>
-    this.notes().filter((n) => n.workDate === this.today),
-  );
-  todayMinutes = computed(() =>
-    this.todayNotes().reduce((s, n) => s + n.minutes, 0),
-  );
+  todayNotes = computed(() => this.notes().filter((n) => n.workDate === this.today));
+  todayMinutes = computed(() => this.todayNotes().reduce((s, n) => s + n.minutes, 0));
   weekMinutes = computed(() => this.notes().reduce((s, n) => s + n.minutes, 0));
   completedTasks = computed(
     () =>
@@ -164,7 +138,7 @@ export class Dashboard {
   totalTasks = computed(() => this.todayNotes().flatMap((n) => n.tasks).length);
   days = computed(() =>
     Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(this.range.from + "T12:00:00Z");
+      const d = new Date(this.range.from + 'T12:00:00Z');
       d.setUTCDate(d.getUTCDate() + i);
       const date = d.toISOString().slice(0, 10),
         value = this.notes()
@@ -172,7 +146,7 @@ export class Dashboard {
           .reduce((s, n) => s + n.minutes, 0);
       return {
         date,
-        label: ["M", "T", "W", "T", "F", "S", "S"][i],
+        label: ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
         height: Math.max(4, Math.min(100, (value / 480) * 100)),
       };
     }),
@@ -182,25 +156,23 @@ export class Dashboard {
   }
   load() {
     this.loading.set(true);
-    this.error.set("");
+    this.error.set('');
     const all: Note[] = [];
     const next = (page: number) =>
-      this.api
-        .get<Page>("/notes", { ...this.range, size: 100, page })
-        .subscribe({
-          next: (p) => {
-            all.push(...p.items);
-            if (p.hasMore) next(page + 1);
-            else {
-              this.notes.set(all);
-              this.loading.set(false);
-            }
-          },
-          error: (e) => {
-            this.error.set(this.api.error(e));
+      this.api.get<Page>('/notes', { ...this.range, size: 100, page }).subscribe({
+        next: (p) => {
+          all.push(...p.items);
+          if (p.hasMore) next(page + 1);
+          else {
+            this.notes.set(all);
             this.loading.set(false);
-          },
-        });
+          }
+        },
+        error: (e) => {
+          this.error.set(this.api.error(e));
+          this.loading.set(false);
+        },
+      });
     next(1);
   }
 }

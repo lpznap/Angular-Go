@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type client struct {
@@ -135,7 +136,11 @@ func TestAuthenticatedJourney(t *testing.T) {
 	}
 	c.register("one@example.com")
 	n := domain.Note{WorkDate: "2026-09-18", Title: "Design งานวันนี้", Description: "<p>Progress</p>", Project: "Website", Tags: []string{"design"}, Status: "progress", Priority: "high", Minutes: 65, Tasks: []domain.Task{{Text: "Review", Done: true}}}
-	code, b := c.request("POST", "/api/notes", n)
+	inputJSON, _ := json.Marshal(n)
+	var input map[string]any
+	_ = json.Unmarshal(inputJSON, &input)
+	input["createdAt"], input["updatedAt"] = "", ""
+	code, b := c.request("POST", "/api/notes", input)
 	if code != 201 {
 		t.Fatalf("create %d %s", code, b)
 	}
@@ -269,6 +274,47 @@ func TestAuthenticatedJourney(t *testing.T) {
 	code, _ = c.request("GET", "/api/me", nil)
 	if code != 401 {
 		t.Fatal("session not revoked")
+	}
+}
+func TestRestoreRollbackAndCrashFileReconciliation(t *testing.T) {
+	a := testAPI(t)
+	c := &client{t: t, app: a.App()}
+	c.register("restore@example.com")
+	n := domain.Note{ID: service.ID(), WorkDate: "2026-09-18", Title: "Restored", Status: "todo", Priority: "low", Tasks: []domain.Task{}, Tags: []string{}}
+	attachment := domain.Attachment{ID: service.ID(), NoteID: n.ID, Name: "work.txt", MIME: "text/plain; charset=utf-8", Size: 4}
+	attachment.ArchivePath = "attachments/" + attachment.ID
+	backup, err := service.ZIP(service.Backup{SchemaVersion: 1, Notes: []domain.Note{n}, Attachments: []domain.Attachment{attachment}}, nil, map[string][]byte{attachment.ArchivePath: []byte("work")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := a.Store.Root
+	a.Store.Root = filepath.Join(root, "missing-directory")
+	code, _ := c.upload("/api/imports", "backup.zip", backup, "replace")
+	if code != 500 {
+		t.Fatalf("expected storage failure, got %d", code)
+	}
+	var count int
+	if err = a.Repo.Pool.QueryRow(context.Background(), "SELECT count(*) FROM notes").Scan(&count); err != nil || count != 0 {
+		t.Fatalf("failed restore left notes: %d %v", count, err)
+	}
+	a.Store.Root = root
+	oldKey, freshKey := service.ID(), service.ID()
+	if err = a.Store.Put(oldKey, []byte("old orphan")); err != nil {
+		t.Fatal(err)
+	}
+	if err = a.Store.Put(freshKey, []byte("in flight")); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err = os.Chtimes(a.Store.Path(oldKey), old, old); err != nil {
+		t.Fatal(err)
+	}
+	a.ReconcileFiles(context.Background())
+	if _, err = os.Stat(a.Store.Path(oldKey)); !os.IsNotExist(err) {
+		t.Fatal("old orphan was not removed")
+	}
+	if _, err = os.Stat(a.Store.Path(freshKey)); err != nil {
+		t.Fatal("in-flight file removed")
 	}
 }
 func jsonNumber(v int32) string { b, _ := json.Marshal(v); return string(b) }

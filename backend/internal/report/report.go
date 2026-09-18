@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"dailyworknotes/internal/domain"
+	_ "embed"
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"html/template"
@@ -16,6 +18,14 @@ import (
 )
 
 var tpl = template.Must(template.New("report").Funcs(template.FuncMap{"rich": func(s string) template.HTML { return template.HTML(domain.Sanitize(s)) }, "hours": func(m int32) string { return fmt.Sprintf("%dh %02dm", m/60, m%60) }}).Parse(`<!doctype html><html lang="en"><head><meta charset="utf-8"><style>@page{size:A4;margin:18mm}body{font-family:'Noto Sans Thai','Noto Sans',sans-serif;color:#22362d;font-size:12px;line-height:1.65}h1{font-size:28px}h2{font-size:18px;margin-bottom:4px}.meta{color:#65796c}article{border-top:1px solid #ced9d1;padding:16px 0;break-inside:avoid}ul{padding-left:22px}footer{margin-top:24px}pre{white-space:pre-wrap}p{overflow-wrap:anywhere}</style></head><body><p class="meta">DAILY WORK NOTES / WORK REPORT</p><h1>Your work, documented.</h1>{{range .Notes}}<article><p class="meta">{{.WorkDate}} · {{.Project}} · {{.Status}} · {{hours .Minutes}}</p><h2>{{.Title}}</h2><div>{{rich .Description}}</div><ul>{{range .Tasks}}<li>{{if .Done}}☑{{else}}☐{{end}} {{.Text}}</li>{{end}}</ul>{{if .Blockers}}<p><strong>Blockers</strong><br>{{.Blockers}}</p>{{end}}{{if .NextSteps}}<p><strong>Next steps</strong><br>{{.NextSteps}}</p>{{end}}</article>{{end}}<footer><strong>Total time: {{hours .Total}}</strong></footer></body></html>`))
+
+//go:embed fonts/NotoSansThai.ttf
+var thaiFont []byte
+
+//go:embed fonts/NotoSansThai-Bold.ttf
+var thaiBoldFont []byte
+
+var embeddedFontStyle = `<style>@font-face{font-family:DailyThai;src:url(data:font/ttf;base64,` + base64.StdEncoding.EncodeToString(thaiFont) + `) format('truetype');font-weight:400}@font-face{font-family:DailyThai;src:url(data:font/ttf;base64,` + base64.StdEncoding.EncodeToString(thaiBoldFont) + `) format('truetype');font-weight:700}body{font-family:DailyThai,'Noto Sans',sans-serif}</style>`
 
 func HTML(notes []domain.Note) ([]byte, error) {
 	var b bytes.Buffer
@@ -62,6 +72,7 @@ func PDF(ctx context.Context, url string, notes []domain.Note) ([]byte, error) {
 	if e != nil {
 		return nil, e
 	}
+	html = bytes.Replace(html, []byte("</head>"), []byte(embeddedFontStyle+"</head>"), 1)
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	p, e := w.CreateFormFile("files", "index.html")

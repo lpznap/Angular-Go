@@ -14,6 +14,7 @@ import (
 
 type emailRequest struct {
 	selection
+	DateTo  string   `json:"dateTo"`
 	To      []string `json:"to"`
 	CC      []string `json:"cc"`
 	Subject string   `json:"subject"`
@@ -22,11 +23,11 @@ type emailRequest struct {
 }
 
 func (a *API) emailPreview(c fiber.Ctx) error {
-	var v emailRequest
+	var v selection
 	if e := c.Bind().JSON(&v); e != nil {
 		return fiber.NewError(400, "Invalid JSON")
 	}
-	notes, e := a.selected(c, v.selection)
+	notes, e := a.selected(c, v)
 	if e != nil {
 		return e
 	}
@@ -41,6 +42,7 @@ func (a *API) emailSend(c fiber.Ctx) error {
 	if e := c.Bind().JSON(&v); e != nil {
 		return fiber.NewError(400, "Invalid JSON")
 	}
+	v.selection.To = v.DateTo
 	if len(v.To) == 0 || len(v.To)+len(v.CC) > 20 || len(v.Subject) == 0 || len(v.Subject) > 300 || strings.ContainsAny(v.Subject, "\r\n") || len(v.Key) < 16 || len(v.Key) > 100 {
 		return fiber.NewError(400, "Provide recipients, subject, and an idempotency key")
 	}

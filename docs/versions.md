@@ -15,6 +15,7 @@ and go.sum capture resolved dependencies. Container images have exact release ta
 | tslib | 2.8.1 | TypeScript runtime helpers |
 | Vitest | 4.1.11 | Frontend unit tests; compatible with Angular build's `^4.0.8` peer requirement |
 | Playwright | 1.63.0 | Chromium browser journeys and artifacts |
+| Prettier | 3.6.2 | Deterministic frontend formatting checks |
 | Go | 1.27.1 | Backend runtime, testing, vet, slog |
 | Fiber | 3.5.0 | All inbound HTTP routes, middleware, handlers, errors, and application tests |
 | pgx | 5.11.0 | PostgreSQL pool, parameterized queries, and transactions |
@@ -50,3 +51,9 @@ Go's standard `net/http` is used only for outgoing calls to the PDF service and 
 request construction. Incoming HTTP is exclusively Fiber. SMTP is implemented using
 the standard SMTP client with deadlines, STARTTLS verification, MIME attachments,
 and explicit acceptance semantics.
+
+For native development, `scripts/pdf-service.mjs` uses the pinned Playwright
+Chromium build through the same multipart endpoint. PDF HTML includes the checked-in
+static [Noto Sans Thai fonts](https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSansThai)
+under the SIL Open Font License. Static fonts are used instead of variable fonts
+to preserve embedded TrueType font subsets and improve PDF text extraction.

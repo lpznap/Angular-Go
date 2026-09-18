@@ -65,7 +65,7 @@ func (n *Note) Validate() error {
 	if len(n.Title) == 0 || len(n.Title) > 300 {
 		return ValidationError{"Title must contain 1–300 bytes"}
 	}
-	if !strings.Contains("|todo|progress|completed|blocked|", "|"+n.Status+"|") || n.Status == "" {
+	if n.Status != "todo" && n.Status != "progress" && n.Status != "completed" && n.Status != "blocked" {
 		return ValidationError{"Invalid status"}
 	}
 	if n.Priority != "low" && n.Priority != "medium" && n.Priority != "high" {

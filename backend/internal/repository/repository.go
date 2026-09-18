@@ -25,7 +25,7 @@ func Date(s string) pgtype.Date {
 func Convert(n db.Note) domain.Note {
 	tasks := []domain.Task{}
 	_ = json.Unmarshal(n.Tasks, &tasks)
-	return domain.Note{ID: n.ID, WorkDate: n.WorkDate.Time.Format("2006-01-02"), Title: n.Title, Project: n.Project, Description: n.Description, Tasks: tasks, Status: n.Status, Priority: n.Priority, Tags: n.Tags, Minutes: n.Minutes, Blockers: n.Blockers, NextSteps: n.NextSteps, Version: n.Version, CreatedAt: n.CreatedAt.Time, UpdatedAt: n.UpdatedAt.Time}
+	return domain.Note{ID: n.ID, WorkDate: n.WorkDate.Time.Format("2006-01-02"), Title: n.Title, Project: n.Project, Description: n.Description, Tasks: tasks, Status: n.Status, Priority: n.Priority, Tags: n.Tags, Minutes: n.Minutes, Blockers: n.Blockers, NextSteps: n.NextSteps, Version: n.Version, CreatedAt: n.CreatedAt.Time.UTC(), UpdatedAt: n.UpdatedAt.Time.UTC()}
 }
 func (r *Repository) Get(ctx context.Context, user, id string) (domain.Note, error) {
 	n, e := r.Q.GetNote(ctx, db.GetNoteParams{ID: id, UserID: user})
@@ -49,7 +49,9 @@ func Update(ctx context.Context, q *db.Queries, user string, n domain.Note) (dom
 }
 func (r *Repository) List(ctx context.Context, user string, f domain.Filter) ([]domain.Note, error) {
 	offset := (f.Page - 1) * f.Size
-	if f.Offset > 0 { offset = f.Offset }
+	if f.Offset > 0 {
+		offset = f.Offset
+	}
 	rows, e := r.Q.ListNotes(ctx, db.ListNotesParams{Owner: user, Search: f.Search, FromDate: f.From, ToDate: f.To, ProjectFilter: f.Project, StatusFilter: f.Status, PriorityFilter: f.Priority, TagFilter: f.Tag, SortBy: f.Sort, PageSize: f.Size, PageOffset: offset})
 	out := []domain.Note{}
 	for _, n := range rows {

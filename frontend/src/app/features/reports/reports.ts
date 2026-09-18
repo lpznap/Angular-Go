@@ -1,10 +1,10 @@
-import { Component, inject, signal } from "@angular/core";
-import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
-import { MatButtonModule } from "@angular/material/button";
-import { Api } from "../../core/api";
-import { Page, dateInZone, weekRange } from "../../core/models";
-import { FileSelection } from "./selection";
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { Api } from '../../core/api';
+import { Page, dateInZone, weekRange } from '../../core/models';
+import { FileSelection } from './selection';
 interface Preview {
   notes: number;
   attachments: number;
@@ -16,9 +16,7 @@ interface Preview {
       <div>
         <p class="eyebrow">TAKE YOUR WORK WITH YOU</p>
         <h1>Reports & backups</h1>
-        <p class="muted">
-          Share a polished report, or keep a copy of everything that matters.
-        </p>
+        <p class="muted">Share a polished report, or keep a copy of everything that matters.</p>
       </div>
     </section>
     <div class="two-cols">
@@ -26,8 +24,8 @@ interface Preview {
         <span class="section-icon">↗</span>
         <h2>Export your notes</h2>
         <p class="muted">
-          English and Thai supported. PDF reports include tasks, blockers, next
-          steps, and time totals.
+          English and Thai supported. PDF reports include tasks, blockers, next steps, and time
+          totals.
         </p>
         <form [formGroup]="form">
           @if (ids.length) {
@@ -47,31 +45,24 @@ interface Preview {
             </select></label
           >
         </form>
-        @if (form.controls.format.value === "zip") {
-          <button mat-stroked-button (click)="loadFiles()">
-            Choose attachments
-          </button>
+        @if (form.controls.format.value === 'zip') {
+          <button mat-stroked-button (click)="loadFiles()">Choose attachments</button>
           @if (noteIds().length) {
-            <app-file-selection
-              [noteIds]="noteIds()"
-              (changed)="attachmentIds = $event"
-            />
+            <app-file-selection [noteIds]="noteIds()" (changed)="attachmentIds = $event" />
           }
         }
         <p class="small muted">
-          JSON contains notes only. Choose ZIP and select attachments to back up
-          files.
+          JSON contains notes only. Choose ZIP and select attachments to back up files.
         </p>
         <button mat-flat-button [disabled]="busy()" (click)="export()">
-          {{ busy() ? "Preparing report…" : "Download export ↓" }}
+          {{ busy() ? 'Preparing report…' : 'Download export ↓' }}
         </button>
       </section>
       <section class="panel detail-panel">
         <span class="section-icon lavender">↥</span>
         <h2>Restore a backup</h2>
         <p class="muted">
-          Bring your notes back into your workspace. Review the contents before
-          importing.
+          Bring your notes back into your workspace. Review the contents before importing.
         </p>
         <label class="backup-picker"
           >Choose a JSON or ZIP backup<input
@@ -84,10 +75,7 @@ interface Preview {
         }
         @if (preview()) {
           <div class="import-preview">
-            <strong
-              >{{ preview()!.notes }} notes ·
-              {{ preview()!.attachments }} attachments</strong
-            >
+            <strong>{{ preview()!.notes }} notes · {{ preview()!.attachments }} attachments</strong>
             <p>{{ preview()!.duplicates.length }} duplicate notes found.</p>
             <label
               >When a note already exists<select
@@ -95,15 +83,9 @@ interface Preview {
                 (change)="mode.set($any($event.target).value)"
               >
                 <option value="skip">Skip existing notes</option>
-                <option value="replace">
-                  Replace existing notes and their attachments
-                </option>
+                <option value="replace">Replace existing notes and their attachments</option>
               </select></label
-            ><button
-              mat-flat-button
-              [disabled]="importBusy()"
-              (click)="restore()"
-            >
+            ><button mat-flat-button [disabled]="importBusy()" (click)="restore()">
               Restore backup
             </button>
           </div>
@@ -120,10 +102,7 @@ interface Preview {
       <span>◈</span>
       <div>
         <h3>A backup is a little peace of mind.</h3>
-        <p>
-          Your files stay private. Every export and restore is scoped to your
-          account.
-        </p>
+        <p>Your files stay private. Every export and restore is scoped to your account.</p>
       </div>
     </div>`,
 })
@@ -132,20 +111,18 @@ export class Reports {
   fb = inject(FormBuilder);
   route = inject(ActivatedRoute);
   range = weekRange(dateInZone(this.api.user()!.timezone));
-  ids = (this.route.snapshot.queryParamMap.get("ids") || "")
-    .split(",")
-    .filter(Boolean);
+  ids = (this.route.snapshot.queryParamMap.get('ids') || '').split(',').filter(Boolean);
   form = this.fb.nonNullable.group({
-    from: this.route.snapshot.queryParamMap.get("from") || this.range.from,
-    to: this.route.snapshot.queryParamMap.get("to") || this.range.to,
-    format: "pdf",
+    from: this.route.snapshot.queryParamMap.get('from') || this.range.from,
+    to: this.route.snapshot.queryParamMap.get('to') || this.range.to,
+    format: 'pdf',
   });
   busy = signal(false);
   importBusy = signal(false);
-  error = signal("");
+  error = signal('');
   preview = signal<Preview | null>(null);
-  mode = signal("skip");
-  result = signal("");
+  mode = signal('skip');
+  result = signal('');
   noteIds = signal<string[]>([]);
   attachmentIds: string[] = [];
   file: File | null = null;
@@ -167,7 +144,7 @@ export class Reports {
     const ids: string[] = [];
     const next = (page: number) =>
       this.api
-        .get<Page>("/notes", {
+        .get<Page>('/notes', {
           from: this.form.controls.from.value,
           to: this.form.controls.to.value,
           size: 100,
@@ -186,22 +163,22 @@ export class Reports {
   export() {
     if (this.busy()) return;
     this.busy.set(true);
-    this.error.set("");
+    this.error.set('');
     const format = this.form.controls.format.value;
     this.api.http
-      .post("/api/reports/" + format, this.selection(), {
-        responseType: "blob",
+      .post('/api/reports/' + format, this.selection(), {
+        responseType: 'blob',
       })
       .subscribe({
         next: (b) => {
           const url = URL.createObjectURL(b),
-            a = document.createElement("a");
+            a = document.createElement('a');
           a.href = url;
-          a.download = "daily-work-notes." + format;
+          a.download = 'daily-work-notes.' + format;
           a.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
           this.busy.set(false);
-          this.api.notify("Export ready");
+          this.api.notify('Export ready');
         },
         error: async (e) => {
           this.busy.set(false);
@@ -209,7 +186,7 @@ export class Reports {
             try {
               this.error.set(JSON.parse(await e.error.text()).error.message);
             } catch {
-              this.error.set("Export failed");
+              this.error.set('Export failed');
             }
           } else this.error.set(this.api.error(e));
         },
@@ -218,13 +195,13 @@ export class Reports {
   choose(e: Event) {
     this.file = (e.target as HTMLInputElement).files?.[0] || null;
     this.preview.set(null);
-    this.result.set("");
+    this.result.set('');
     if (!this.file) return;
     const data = new FormData();
-    data.append("file", this.file);
+    data.append('file', this.file);
     this.importBusy.set(true);
-    this.error.set("");
-    this.api.post<Preview>("/imports/preview", data).subscribe({
+    this.error.set('');
+    this.api.post<Preview>('/imports/preview', data).subscribe({
       next: (p) => {
         this.preview.set(p);
         this.importBusy.set(false);
@@ -238,24 +215,22 @@ export class Reports {
   restore() {
     if (!this.file || this.importBusy()) return;
     if (
-      this.mode() === "replace" &&
-      !confirm(
-        "Replace duplicate notes and their attachments with backup contents?",
-      )
+      this.mode() === 'replace' &&
+      !confirm('Replace duplicate notes and their attachments with backup contents?')
     )
       return;
     const data = new FormData();
-    data.append("file", this.file);
-    data.append("mode", this.mode());
+    data.append('file', this.file);
+    data.append('mode', this.mode());
     this.importBusy.set(true);
-    this.error.set("");
+    this.error.set('');
     this.api
       .post<{
         successful: number;
         skipped: number;
         failed: number;
         attachments: number;
-      }>("/imports", data)
+      }>('/imports', data)
       .subscribe({
         next: (r) => {
           this.importBusy.set(false);
@@ -266,9 +241,7 @@ export class Reports {
         },
         error: (e) => {
           this.importBusy.set(false);
-          this.error.set(
-            this.api.error(e) + " No database changes were committed.",
-          );
+          this.error.set(this.api.error(e) + ' No database changes were committed.');
         },
       });
   }

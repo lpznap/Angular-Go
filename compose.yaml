@@ -24,7 +24,7 @@ services:
     ports: ['127.0.0.1:8025:8025', '127.0.0.1:1025:1025']
   pdf:
     image: gotenberg/gotenberg:8.30.1
-    command: ['gotenberg', '--chromium-disable-javascript=true', '--chromium-allow-list=file:///tmp/.*']
+    command: ['gotenberg', '--chromium-disable-javascript=true', '--chromium-allow-list=^(file:///tmp/|data:).*']
     ports: ['127.0.0.1:3000:3000']
     shm_size: 256mb
   backend:

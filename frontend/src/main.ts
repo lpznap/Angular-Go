@@ -5,4 +5,10 @@ import { provideRouter } from '@angular/router';
 import { App } from './app/app';
 import { routes } from './app/routes';
 import { authInterceptor } from './app/core/api';
-bootstrapApplication(App, {providers:[provideZonelessChangeDetection(),provideHttpClient(withXhr(),withInterceptors([authInterceptor])),provideRouter(routes)]}).catch(console.error);
+bootstrapApplication(App, {
+  providers: [
+    provideZonelessChangeDetection(),
+    provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
+    provideRouter(routes),
+  ],
+}).catch(console.error);

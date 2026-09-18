@@ -6,7 +6,8 @@
     "start": "ng serve --host 0.0.0.0 --proxy-config proxy.conf.json",
     "build": "ng build",
     "test": "vitest run",
-    "lint": "ng build --configuration development",
+    "lint": "prettier --check src e2e *.ts *.json && ng build --configuration development",
+    "format": "prettier --write src e2e *.ts *.json",
     "e2e": "playwright test"
   },
   "engines": {

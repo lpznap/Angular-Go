@@ -5,11 +5,34 @@ import (
 	"bytes"
 	"dailyworknotes/internal/domain"
 	"encoding/json"
+	"os"
 	"testing"
 )
 
 func backupFixture() Backup {
 	return Backup{SchemaVersion: 1, Notes: []domain.Note{{ID: "0123456789abcdef0123456789abcdef", Title: "งาน", WorkDate: "2026-09-18", Status: "todo", Priority: "low"}}, Attachments: []domain.Attachment{}}
+}
+func TestRejectSymlinkAndDecompressionBomb(t *testing.T) {
+	for _, kind := range []string{"symlink", "oversize"} {
+		var buffer bytes.Buffer
+		writer := zip.NewWriter(&buffer)
+		header := &zip.FileHeader{Name: "payload", Method: zip.Store}
+		if kind == "symlink" {
+			header.SetMode(os.ModeSymlink | 0777)
+		} else {
+			header.UncompressedSize64 = 101 << 20
+		}
+		_, err := writer.CreateRaw(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = ParseBackup(buffer.Bytes(), true, 100); err == nil {
+			t.Errorf("accepted %s archive", kind)
+		}
+	}
 }
 func TestBackupRoundTrip(t *testing.T) {
 	b := backupFixture()

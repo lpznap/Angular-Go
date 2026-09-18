@@ -246,9 +246,11 @@ func (a *API) importBackup(c fiber.Ctx) error {
 		}
 		attached++
 	}
+	// Commit errors can mean the response was lost after a successful commit.
+	// Preserve staged files until reconciliation rather than breaking references.
+	committed = true
 	if e = tx.Commit(c.Context()); e != nil {
 		return e
 	}
-	committed = true
 	return c.JSON(fiber.Map{"successful": successful, "skipped": skipped, "failed": 0, "attachments": attached})
 }

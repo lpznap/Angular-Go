@@ -7,6 +7,8 @@ import (
 	"dailyworknotes/internal/storage"
 	"github.com/gofiber/fiber/v3"
 	"mime"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -50,7 +52,8 @@ func (a *API) upload(c fiber.Ctx) error {
 	}
 	_, e = a.Repo.Pool.Exec(c.Context(), "INSERT INTO attachments(id,note_id,user_id,name,mime,size,storage_key) VALUES($1,$2,$3,$4,$5,$6,$1)", id, c.Params("id"), user(c), f.Filename, typ, len(b))
 	if e != nil {
-		_ = a.Store.Remove(id)
+		// Autocommit outcome may be uncertain after a connection failure.
+		// The orphan reconciler removes unreferenced files after a grace period.
 		return e
 	}
 	return c.Status(201).JSON(domain.Attachment{ID: id, NoteID: c.Params("id"), Name: f.Filename, MIME: typ, Size: int64(len(b))})
@@ -120,6 +123,30 @@ func (a *API) Cleanup(ctx context.Context) {
 				}
 			}
 			_, _ = a.Repo.Pool.Exec(ctx, "DELETE FROM sessions WHERE expires_at<now()")
+			a.ReconcileFiles(ctx)
+		}
+	}
+}
+
+// Requests are bounded to 90 seconds; one hour protects files staged by any
+// currently running upload or restore. This also recovers process-crash orphans.
+func (a *API) ReconcileFiles(ctx context.Context) {
+	entries, err := os.ReadDir(a.Store.Root)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		key := entry.Name()
+		if entry.IsDir() || len(key) != 32 || strings.Trim(key, "0123456789abcdef") != "" {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || time.Since(info.ModTime()) < time.Hour {
+			continue
+		}
+		var referenced bool
+		if err = a.Repo.Pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM attachments WHERE storage_key=$1)", key).Scan(&referenced); err == nil && !referenced {
+			_ = a.Store.Remove(key)
 		}
 	}
 }

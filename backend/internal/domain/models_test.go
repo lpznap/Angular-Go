@@ -20,3 +20,8 @@ func TestValidationAndSanitization(t *testing.T) {
 		t.Fatal("accepted invalid date")
 	}
 }
+
+func TestStatusMustBeOneEnumValue(t *testing.T) {
+	n:=Note{WorkDate:"2026-09-18",Title:"Valid",Status:"todo|progress",Priority:"low"}
+	if n.Validate()==nil {t.Fatal("accepted combined status values")}
+}

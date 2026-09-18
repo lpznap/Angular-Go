@@ -4,5 +4,64 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { Api } from '../../core/api';
 import { Project } from '../../core/models';
-@Component({imports:[ReactiveFormsModule,RouterLink,MatButtonModule],template:`<section class="page-heading"><div><p class="eyebrow">GIVE YOUR WORK A HOME</p><h1>Projects</h1><p class="muted">A little structure for the things you’re moving forward.</p></div></section><form class="panel inline-form" [formGroup]="form" (ngSubmit)="add()"><label>Project or customer name<input formControlName="name" placeholder="e.g. Website redesign"></label><button mat-flat-button [disabled]="form.invalid">＋ Create project</button></form><div class="project-grid">@for(p of projects();track p.id){<article class="panel project-card"><span class="project-icon">▦</span><h2>{{p.name}}</h2><p class="muted">A space for progress, ideas, and decisions.</p><a mat-button routerLink="/notes" [queryParams]="{project:p.name}">Open notes →</a><button mat-button class="danger" (click)="remove(p)">Remove</button></article>}@empty{<p class="empty">Create your first project to organize your notes.</p>}</div>`})
-export class Projects {api=inject(Api);fb=inject(FormBuilder);projects=signal<Project[]>([]);form=this.fb.nonNullable.group({name:['',Validators.required]});constructor(){this.load()}load(){this.api.get<Project[]>('/projects').subscribe({next:p=>this.projects.set(p),error:e=>this.api.notify(this.api.error(e))})}add(){if(this.form.invalid)return;this.api.post<Project[]>('/projects',this.form.getRawValue()).subscribe({next:p=>{this.projects.set(p);this.form.reset()},error:e=>this.api.notify(this.api.error(e))})}remove(p:Project){if(confirm('Remove this project from suggestions? Existing notes keep their project text.'))this.api.delete('/projects/'+p.id).subscribe({next:()=>this.load(),error:e=>this.api.notify(this.api.error(e))})}}
+@Component({
+  imports: [ReactiveFormsModule, RouterLink, MatButtonModule],
+  template: `<section class="page-heading">
+      <div>
+        <p class="eyebrow">GIVE YOUR WORK A HOME</p>
+        <h1>Projects</h1>
+        <p class="muted">A little structure for the things you’re moving forward.</p>
+      </div>
+    </section>
+    <form class="panel inline-form" [formGroup]="form" (ngSubmit)="add()">
+      <label
+        >Project or customer name<input
+          formControlName="name"
+          placeholder="e.g. Website redesign" /></label
+      ><button mat-flat-button [disabled]="form.invalid">＋ Create project</button>
+    </form>
+    <div class="project-grid">
+      @for (p of projects(); track p.id) {
+        <article class="panel project-card">
+          <span class="project-icon">▦</span>
+          <h2>{{ p.name }}</h2>
+          <p class="muted">A space for progress, ideas, and decisions.</p>
+          <a mat-button routerLink="/notes" [queryParams]="{ project: p.name }">Open notes →</a
+          ><button mat-button class="danger" (click)="remove(p)">Remove</button>
+        </article>
+      } @empty {
+        <p class="empty">Create your first project to organize your notes.</p>
+      }
+    </div>`,
+})
+export class Projects {
+  api = inject(Api);
+  fb = inject(FormBuilder);
+  projects = signal<Project[]>([]);
+  form = this.fb.nonNullable.group({ name: ['', Validators.required] });
+  constructor() {
+    this.load();
+  }
+  load() {
+    this.api.get<Project[]>('/projects').subscribe({
+      next: (p) => this.projects.set(p),
+      error: (e) => this.api.notify(this.api.error(e)),
+    });
+  }
+  add() {
+    if (this.form.invalid) return;
+    this.api.post<Project[]>('/projects', this.form.getRawValue()).subscribe({
+      next: (p) => {
+        this.projects.set(p);
+        this.form.reset();
+      },
+      error: (e) => this.api.notify(this.api.error(e)),
+    });
+  }
+  remove(p: Project) {
+    if (confirm('Remove this project from suggestions? Existing notes keep their project text.'))
+      this.api
+        .delete('/projects/' + p.id)
+        .subscribe({ next: () => this.load(), error: (e) => this.api.notify(this.api.error(e)) });
+  }
+}

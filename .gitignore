@@ -9,3 +9,4 @@ playwright-report/
 test-results/
 *.exe
 data/
+output/
