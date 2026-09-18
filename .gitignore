@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.angular/
+.env
+.tools/
+.cache/
+coverage/
+playwright-report/
+test-results/
+*.exe
+data/

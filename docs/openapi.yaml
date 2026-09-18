@@ -1,0 +1,303 @@
+openapi: 3.0.3
+info:
+  title: Daily Work Notes API
+  version: 1.0.0
+  description: |
+    Session-authenticated API. Register or log in with an Origin header matching APP_ORIGIN.
+    The response sets an HttpOnly daily_session cookie and returns a CSRF token.
+    Send X-CSRF-Token and Origin for every authenticated mutation. GET requests require only the cookie.
+    Dates are YYYY-MM-DD; timestamps are UTC RFC3339. Ownership is enforced on all resources.
+    Note updates and deletion require the last observed version; stale writes return 409.
+    Error bodies consistently contain error.message and error.requestId.
+servers:
+  - url: /
+security:
+  - session: []
+tags:
+  - name: Authentication
+  - name: Notes
+  - name: Attachments
+  - name: Reports
+  - name: Email
+paths:
+  /health:
+    get:
+      security: []
+      summary: Liveness
+      responses: {'200': {description: Process is running}}
+  /ready:
+    get:
+      security: []
+      summary: Database readiness
+      responses: {'200': {description: Database reachable}, '503': {$ref: '#/components/responses/Error'}}
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      security: []
+      summary: Create an account and session
+      description: Password must contain 12–72 bytes. Login and registration are rate-limited to 15 requests per IP per minute.
+      requestBody: {$ref: '#/components/requestBodies/Credentials'}
+      responses: {'200': {$ref: '#/components/responses/User'}, '400': {$ref: '#/components/responses/Error'}, '409': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      security: []
+      summary: Sign in
+      requestBody: {$ref: '#/components/requestBodies/Credentials'}
+      responses: {'200': {$ref: '#/components/responses/User'}, '401': {$ref: '#/components/responses/Error'}}
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke the current session
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses: {'204': {description: Session revoked}}
+  /api/me:
+    get:
+      tags: [Authentication]
+      summary: Current account, timezone, CSRF token, and upload limit
+      responses: {'200': {$ref: '#/components/responses/User'}, '401': {$ref: '#/components/responses/Error'}}
+  /api/settings:
+    put:
+      summary: Change display timezone
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [timezone]
+              properties: {timezone: {type: string, example: Asia/Bangkok}}
+      responses: {'200': {$ref: '#/components/responses/User'}, '400': {$ref: '#/components/responses/Error'}}
+  /api/notes:
+    get:
+      tags: [Notes]
+      summary: Search, filter, sort, and paginate notes
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: Case-insensitive title, description, project, and tag search}
+        - {name: from, in: query, schema: {type: string, format: date}, description: Inclusive start date}
+        - {name: to, in: query, schema: {type: string, format: date}, description: Inclusive end date}
+        - {name: project, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [todo, progress, completed, blocked]}}
+        - {name: priority, in: query, schema: {type: string, enum: [low, medium, high]}}
+        - {name: tag, in: query, schema: {type: string}}
+        - {name: sort, in: query, schema: {type: string, enum: [date, updated, priority, title], default: date}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Paginated notes; hasMore may be true for an exactly full final page
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Note'}}
+                  page: {type: integer}
+                  size: {type: integer}
+                  hasMore: {type: boolean}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Notes]
+      summary: Create a note
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/Note'}
+      responses: {'201': {$ref: '#/components/responses/Note'}, '400': {$ref: '#/components/responses/Error'}}
+  /api/notes/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      tags: [Notes]
+      summary: Read an owned note
+      responses: {'200': {$ref: '#/components/responses/Note'}, '404': {$ref: '#/components/responses/Error'}}
+    put:
+      tags: [Notes]
+      summary: Update a note using optimistic version checking
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/Note'}
+      responses: {'200': {$ref: '#/components/responses/Note'}, '409': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+    delete:
+      tags: [Notes]
+      summary: Delete note and queue attachment cleanup
+      parameters:
+        - {$ref: '#/components/parameters/CSRF'}
+        - {name: version, in: query, required: true, schema: {type: integer}}
+      responses: {'204': {description: Deleted}, '409': {$ref: '#/components/responses/Error'}}
+  /api/notes/{id}/duplicate:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      tags: [Notes]
+      summary: Duplicate note content without attachments
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses: {'201': {$ref: '#/components/responses/Note'}}
+  /api/projects:
+    get:
+      summary: List owned projects
+      responses: {'200': {description: Array of project id, name, and color}}
+    post:
+      summary: Create a project suggestion
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [name], properties: {name: {type: string, maxLength: 200}}}}}
+      responses: {'200': {description: Updated project list}}
+  /api/projects/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    delete:
+      summary: Remove a project suggestion; existing note text is preserved
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses: {'204': {description: Deleted}}
+  /api/notes/{id}/attachments:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      tags: [Attachments]
+      summary: List attachment metadata
+      responses: {'200': {description: Array of attachment id, noteId, name, mime, and size}}
+    post:
+      tags: [Attachments]
+      summary: Upload one validated file
+      description: PNG, JPEG, GIF, WebP, PDF, UTF-8 TXT, DOCX, XLSX. Default 10 MiB maximum. Server checks contents and generates storage keys.
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/File'}
+      responses: {'201': {description: Attachment metadata}, '400': {$ref: '#/components/responses/Error'}, '413': {$ref: '#/components/responses/Error'}}
+  /api/attachments/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      tags: [Attachments]
+      summary: Download an owned attachment
+      parameters: [{name: preview, in: query, schema: {type: integer, enum: [1]}, description: Inline disposition for images and PDFs only}]
+      responses: {'200': {description: Binary file with Content-Type and Content-Disposition}, '404': {$ref: '#/components/responses/Error'}}
+    delete:
+      tags: [Attachments]
+      summary: Remove metadata and queue durable filesystem cleanup
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses: {'204': {description: Removed}}
+  /api/reports/{format}:
+    post:
+      tags: [Reports]
+      summary: Export selected notes or an inclusive date range
+      description: Maximum 500 notes and 50 MiB of selected attachments. JSON is notes-only. ZIP contains backup.json, report.pdf, and selected attachments. PDF uses Chromium and embedded Noto Thai fonts.
+      parameters:
+        - {name: format, in: path, required: true, schema: {type: string, enum: [pdf, csv, json, zip]}}
+        - {$ref: '#/components/parameters/CSRF'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Selection'}}}
+      responses: {'200': {description: Downloadable report}, '400': {$ref: '#/components/responses/Error'}}
+  /api/imports/preview:
+    post:
+      tags: [Reports]
+      summary: Validate JSON or ZIP and preview counts and duplicate IDs
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/File'}
+      responses: {'200': {description: notes count, attachments count, duplicates array}, '400': {$ref: '#/components/responses/Error'}}
+  /api/imports:
+    post:
+      tags: [Reports]
+      summary: Restore validated backup in one transaction
+      description: Revalidates uploaded content. Replace updates owned duplicates and replaces their attachment sets; foreign ID collisions are remapped. On failure no database changes are committed.
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, mode]
+              properties: {file: {type: string, format: binary}, mode: {type: string, enum: [skip, replace]}}
+      responses: {'200': {description: successful, skipped, failed, and attachments counts}, '400': {$ref: '#/components/responses/Error'}}
+  /api/email/preview:
+    post:
+      tags: [Email]
+      summary: Generate sanitized formatted HTML preview
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Selection'}}}
+      responses: {'200': {description: Object with html string}}
+  /api/email/send:
+    post:
+      tags: [Email]
+      summary: Send through SMTP with durable duplicate suppression
+      description: 10 sends per user per minute. Same key and payload returns prior outcome. Changed payload with same key returns 409. A new key is required for an intentional retry. Accepted means SMTP acceptance, not confirmed delivery.
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/Selection'}
+                - type: object
+                  required: [to, subject, key]
+                  properties:
+                    to: {type: array, minItems: 1, items: {type: string, format: email}}
+                    cc: {type: array, items: {type: string, format: email}}
+                    subject: {type: string, maxLength: 300}
+                    pdf: {type: boolean}
+                    key: {type: string, minLength: 16, maxLength: 100}
+      responses: {'200': {description: 'outcome (sending, accepted, failed, unknown), detail, duplicate'}, '409': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
+  /api/email/history:
+    get:
+      tags: [Email]
+      summary: Most recent 100 owned send attempts
+      responses: {'200': {description: Array with recipients, subject, createdAt, outcome, and detail}}
+components:
+  securitySchemes:
+    session: {type: apiKey, in: cookie, name: daily_session}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: string}}
+    CSRF: {name: X-CSRF-Token, in: header, required: true, schema: {type: string}, description: Token from current session; Origin must also match APP_ORIGIN}
+  schemas:
+    Selection:
+      type: object
+      properties:
+        ids: {type: array, maxItems: 500, items: {type: string}, description: Takes precedence over dates}
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        attachmentIds: {type: array, items: {type: string}}
+    Note:
+      type: object
+      required: [workDate, title, status, priority, minutes]
+      properties:
+        id: {type: string, readOnly: true}
+        workDate: {type: string, format: date}
+        title: {type: string, minLength: 1, maxLength: 300}
+        project: {type: string, maxLength: 200}
+        description: {type: string, maxLength: 100000, description: Sanitized allowlisted HTML}
+        tasks:
+          type: array
+          maxItems: 100
+          items: {type: object, properties: {text: {type: string, maxLength: 1000}, done: {type: boolean}}}
+        status: {type: string, enum: [todo, progress, completed, blocked]}
+        priority: {type: string, enum: [low, medium, high]}
+        tags: {type: array, maxItems: 30, items: {type: string, maxLength: 80}}
+        minutes: {type: integer, minimum: 0, maximum: 1440}
+        blockers: {type: string, maxLength: 10000}
+        nextSteps: {type: string, maxLength: 10000}
+        version: {type: integer, description: Required for updates}
+        createdAt: {type: string, format: date-time, readOnly: true}
+        updatedAt: {type: string, format: date-time, readOnly: true}
+  requestBodies:
+    Credentials:
+      required: true
+      content: {application/json: {schema: {type: object, required: [email, password], properties: {email: {type: string, format: email}, password: {type: string, format: password}}}}}
+    Note:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/Note'}}}
+    File:
+      required: true
+      content: {multipart/form-data: {schema: {type: object, required: [file], properties: {file: {type: string, format: binary}}}}}
+  responses:
+    Error:
+      description: Validation, authentication, authorization, conflict, rate limit, or server error
+      content: {application/json: {schema: {type: object, properties: {error: {type: object, properties: {message: {type: string}, requestId: {type: string}}}}}}}
+    Note:
+      description: Persisted note
+      content: {application/json: {schema: {$ref: '#/components/schemas/Note'}}}
+    User:
+      description: Account and session information; daily_session cookie set on login and registration
+      content:
+        application/json:
+          schema:
+            type: object
+            properties: {id: {type: string}, email: {type: string}, timezone: {type: string}, csrf: {type: string}, maxFileBytes: {type: integer}}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "notes": [
+    {
+      "id": "10000000000000000000000000000001",
+      "workDate": "2026-09-18",
+      "title": "A thoughtful start to the week",
+      "project": "Website redesign",
+      "description": "<p>Reviewed the navigation and simplified the onboarding flow. A small change with a meaningful impact.</p>",
+      "tasks": [{"text":"Review navigation with the team","done":true},{"text":"Write up the next iteration","done":false}],
+      "status": "progress",
+      "priority": "medium",
+      "tags": ["design", "planning"],
+      "minutes": 125,
+      "blockers": "Waiting for feedback on the mobile layout.",
+      "nextSteps": "Prototype the new entry point.",
+      "version": 1,
+      "createdAt": "2026-09-18T02:00:00Z",
+      "updatedAt": "2026-09-18T04:05:00Z"
+    },
+    {
+      "id": "10000000000000000000000000000002",
+      "workDate": "2026-09-18",
+      "title": "บันทึกงานประจำวัน — ทดสอบภาษาไทย",
+      "project": "Daily Work Notes",
+      "description": "<p>ปรับปรุงหน้าจอบันทึกงานและทดสอบการแสดงผลภาษาไทย</p><ul><li>ตรวจสอบสระและวรรณยุกต์</li><li>ทดสอบรายงาน PDF</li></ul>",
+      "tasks": [{"text":"ตรวจสอบการบันทึกข้อมูล","done":true},{"text":"ทดสอบการส่งอีเมล","done":true}],
+      "status": "completed",
+      "priority": "high",
+      "tags": ["ภาษาไทย", "testing"],
+      "minutes": 90,
+      "blockers": "",
+      "nextSteps": "สรุปผลและวางแผนงานวันถัดไป",
+      "version": 1,
+      "createdAt": "2026-09-18T05:00:00Z",
+      "updatedAt": "2026-09-18T06:30:00Z"
+    }
+  ],
+  "attachments": []
+}

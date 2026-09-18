@@ -1,0 +1,63 @@
+name: daily-work-notes
+services:
+  db:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-daily}
+      POSTGRES_USER: ${POSTGRES_USER:-daily}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-daily_local}
+    ports: ['127.0.0.1:5432:5432']
+    volumes: ['postgres_data:/var/lib/postgresql']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: migrate/migrate:v4.19.1
+    volumes: ['./backend/db/migrations:/migrations:ro']
+    command: ['-path=/migrations', '-database=postgres://${POSTGRES_USER:-daily}:${POSTGRES_PASSWORD:-daily_local}@db:5432/${POSTGRES_DB:-daily}?sslmode=disable', 'up']
+    depends_on:
+      db: {condition: service_healthy}
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    ports: ['127.0.0.1:8025:8025', '127.0.0.1:1025:1025']
+  pdf:
+    image: gotenberg/gotenberg:8.30.1
+    command: ['gotenberg', '--chromium-disable-javascript=true', '--chromium-allow-list=file:///tmp/.*']
+    ports: ['127.0.0.1:3000:3000']
+    shm_size: 256mb
+  backend:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-daily}:${POSTGRES_PASSWORD:-daily_local}@db:5432/${POSTGRES_DB:-daily}?sslmode=disable
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:4200}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      STORAGE_PATH: /data
+      MAX_FILE_BYTES: ${MAX_FILE_BYTES:-10485760}
+      PDF_URL: http://pdf:3000
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-notes@daily.local}
+      SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-false}
+    volumes: ['attachments:/data']
+    ports: ['127.0.0.1:8080:8080']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      mailpit: {condition: service_started}
+      pdf: {condition: service_started}
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://localhost:8080/ready']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  frontend:
+    build: {context: frontend}
+    ports: ['127.0.0.1:4200:80']
+    depends_on:
+      backend: {condition: service_healthy}
+volumes:
+  postgres_data:
+  attachments:

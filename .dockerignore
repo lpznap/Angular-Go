@@ -1,0 +1,10 @@
+.git
+.tools
+.cache
+**/node_modules
+**/dist
+**/.angular
+**/test-results
+**/playwright-report
+.env
+data
