@@ -84,7 +84,9 @@ func (a *API) App() *fiber.App {
 	})
 	app.Get("/openapi.yaml", func(c fiber.Ctx) error {
 		path := "./docs/openapi.yaml"
-		if _, err := os.Stat(path); err != nil { path = "../docs/openapi.yaml" }
+		if _, err := os.Stat(path); err != nil {
+			path = "../docs/openapi.yaml"
+		}
 		return c.SendFile(path)
 	})
 	app.Get("/docs", func(c fiber.Ctx) error {

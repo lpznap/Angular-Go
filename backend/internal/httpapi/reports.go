@@ -250,7 +250,7 @@ func (a *API) importBackup(c fiber.Ctx) error {
 	// Preserve staged files until reconciliation rather than breaking references.
 	committed = true
 	if e = tx.Commit(c.Context()); e != nil {
-		return e
+		return fiber.NewError(503, "Restore outcome could not be confirmed. Refresh your notes before retrying.")
 	}
 	return c.JSON(fiber.Map{"successful": successful, "skipped": skipped, "failed": 0, "attachments": attached})
 }

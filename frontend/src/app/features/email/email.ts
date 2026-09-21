@@ -96,7 +96,7 @@ interface Attempt {
         <div class="history-row">
           <div>
             <strong>{{ h.subject }}</strong
-            ><small>{{ h.recipients.to.join(', ') }} · {{ h.createdAt }}</small>
+            ><small>{{ h.recipients.to.join(', ') }} · {{ timestamp(h.createdAt) }}</small>
             <p class="muted small">{{ h.detail }}</p>
           </div>
           <span class="badge">{{ h.outcome }}</span>
@@ -231,5 +231,12 @@ export class Email {
       next: (h) => this.history.set(h),
       error: (e) => this.error.set(this.api.error(e)),
     });
+  }
+  timestamp(value: string) {
+    return new Intl.DateTimeFormat('en', {
+      timeZone: this.api.user()!.timezone,
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
   }
 }

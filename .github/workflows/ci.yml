@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18.6-alpine
+        image: postgres:17.11-alpine
         env: {POSTGRES_USER: daily, POSTGRES_PASSWORD: daily_local, POSTGRES_DB: daily_test}
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U daily -d daily_test" --health-interval 3s --health-timeout 3s --health-retries 20

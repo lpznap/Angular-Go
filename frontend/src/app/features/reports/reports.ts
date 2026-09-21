@@ -241,7 +241,7 @@ export class Reports {
         },
         error: (e) => {
           this.importBusy.set(false);
-          this.error.set(this.api.error(e) + ' No database changes were committed.');
+          this.error.set(this.api.error(e));
         },
       });
   }

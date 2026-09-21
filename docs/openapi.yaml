@@ -74,7 +74,7 @@ paths:
       tags: [Notes]
       summary: Search, filter, sort, and paginate notes
       parameters:
-        - {name: q, in: query, schema: {type: string}, description: Case-insensitive title, description, project, and tag search}
+        - {name: q, in: query, schema: {type: string}, description: 'Case-insensitive title, description, project, and tag search'}
         - {name: from, in: query, schema: {type: string, format: date}, description: Inclusive start date}
         - {name: to, in: query, schema: {type: string, format: date}, description: Inclusive end date}
         - {name: project, in: query, schema: {type: string}}
@@ -132,7 +132,7 @@ paths:
   /api/projects:
     get:
       summary: List owned projects
-      responses: {'200': {description: Array of project id, name, and color}}
+      responses: {'200': {description: 'Array of project id, name, and color'}}
     post:
       summary: Create a project suggestion
       parameters: [{$ref: '#/components/parameters/CSRF'}]
@@ -151,7 +151,7 @@ paths:
     get:
       tags: [Attachments]
       summary: List attachment metadata
-      responses: {'200': {description: Array of attachment id, noteId, name, mime, and size}}
+      responses: {'200': {description: 'Array of attachment id, noteId, name, mime, and size'}}
     post:
       tags: [Attachments]
       summary: Upload one validated file
@@ -189,12 +189,12 @@ paths:
       summary: Validate JSON or ZIP and preview counts and duplicate IDs
       parameters: [{$ref: '#/components/parameters/CSRF'}]
       requestBody: {$ref: '#/components/requestBodies/File'}
-      responses: {'200': {description: notes count, attachments count, duplicates array}, '400': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 'notes count, attachments count, duplicates array'}, '400': {$ref: '#/components/responses/Error'}}
   /api/imports:
     post:
       tags: [Reports]
       summary: Restore validated backup in one transaction
-      description: Revalidates uploaded content. Replace updates owned duplicates and replaces their attachment sets; foreign ID collisions are remapped. On failure no database changes are committed.
+      description: Revalidates uploaded content. Replace updates owned duplicates and replaces their attachment sets; foreign ID collisions are remapped. Failures before commit roll back database changes. An uncertain commit returns 503; refresh notes before retrying.
       parameters: [{$ref: '#/components/parameters/CSRF'}]
       requestBody:
         required: true
@@ -204,7 +204,7 @@ paths:
               type: object
               required: [file, mode]
               properties: {file: {type: string, format: binary}, mode: {type: string, enum: [skip, replace]}}
-      responses: {'200': {description: successful, skipped, failed, and attachments counts}, '400': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 'successful, skipped, failed, and attachments counts'}, '400': {$ref: '#/components/responses/Error'}}
   /api/email/preview:
     post:
       tags: [Email]
@@ -225,23 +225,24 @@ paths:
         content:
           application/json:
             schema:
-              allOf:
-                - {$ref: '#/components/schemas/Selection'}
-                - type: object
-                  required: [to, subject, key]
-                  properties:
-                    to: {type: array, minItems: 1, items: {type: string, format: email}}
-                    dateTo: {type: string, format: date, description: Inclusive end date for email selection; To recipients use the to field}
-                    cc: {type: array, items: {type: string, format: email}}
-                    subject: {type: string, maxLength: 300}
-                    pdf: {type: boolean}
-                    key: {type: string, minLength: 16, maxLength: 100}
+              type: object
+              required: [to, subject, key]
+              properties:
+                ids: {type: array, maxItems: 500, items: {type: string}, description: Takes precedence over dates}
+                from: {type: string, format: date}
+                dateTo: {type: string, format: date, description: Inclusive end date for email selection}
+                attachmentIds: {type: array, items: {type: string}}
+                to: {type: array, minItems: 1, maxItems: 20, items: {type: string, format: email}}
+                cc: {type: array, maxItems: 20, items: {type: string, format: email}}
+                subject: {type: string, maxLength: 300}
+                pdf: {type: boolean}
+                key: {type: string, minLength: 16, maxLength: 100}
       responses: {'200': {description: 'outcome (sending, accepted, failed, unknown), detail, duplicate'}, '409': {$ref: '#/components/responses/Error'}, '429': {$ref: '#/components/responses/Error'}}
   /api/email/history:
     get:
       tags: [Email]
       summary: Most recent 100 owned send attempts
-      responses: {'200': {description: Array with recipients, subject, createdAt, outcome, and detail}}
+      responses: {'200': {description: 'Array with recipients, subject, createdAt, outcome, and detail'}}
 components:
   securitySchemes:
     session: {type: apiKey, in: cookie, name: daily_session}

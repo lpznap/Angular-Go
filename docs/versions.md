@@ -23,7 +23,7 @@ and go.sum capture resolved dependencies. Container images have exact release ta
 | golang-migrate | 4.19.1 | Versioned schema migration runner |
 | bluemonday | 1.0.27 | Server-side HTML allowlist sanitation |
 | x/crypto | 0.57.0 | bcrypt password hashing |
-| PostgreSQL | 18.6 | Persistent relational storage |
+| PostgreSQL | 17.11 | Persistent relational storage; follows the workspace's PostgreSQL 17 deployment choice |
 | Gotenberg | 8.30.1 | Chromium HTML-to-PDF, complex-script shaping, Noto Thai fonts |
 | Mailpit | 1.27.4 | Local SMTP receiver and email inspection |
 | nginx | 1.28.2 | Static frontend and same-origin API proxy |
